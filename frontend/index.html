@@ -1,0 +1,2876 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Himalaya Airlines OBS Revenue Management System
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+<div id="app">
+
+
+<!-- =========================================================
+     LOGIN
+     ========================================================= -->
+
+<div
+    v-if="!user"
+    class="login-container"
+>
+
+    <div class="login-card">
+
+        <div class="login-logo">
+
+            <img
+                src="logo.png"
+                alt="Himalaya Airlines"
+            >
+
+        </div>
+
+
+        <h1>
+            HIMALAYA AIRLINES
+        </h1>
+
+        <p class="login-subtitle">
+            OBS Revenue Management System
+        </p>
+
+
+        <div class="login-form">
+
+            <label>
+                Employee ID
+            </label>
+
+            <input
+                v-model="loginForm.employee_id"
+                placeholder="Enter employee ID"
+                autocomplete="username"
+                @keyup.enter="login"
+            >
+
+
+            <label>
+                Password
+            </label>
+
+            <input
+                v-model="loginForm.password"
+                type="password"
+                placeholder="Enter password"
+                autocomplete="current-password"
+                @keyup.enter="login"
+            >
+
+
+            <button
+                class="primary login-button"
+                @click="login"
+                :disabled="loggingIn"
+            >
+
+                {{
+                    loggingIn
+                        ? "LOGGING IN..."
+                        : "LOGIN"
+                }}
+
+            </button>
+
+        </div>
+
+
+        <p
+            v-if="loginError"
+            class="error login-error"
+        >
+            {{ loginError }}
+        </p>
+
+
+        <div class="demo-info">
+
+            <div class="demo-title">
+                DEMO ACCESS
+            </div>
+
+            <div>
+                Crew:
+                <b>CREW001 / 1234</b>
+            </div>
+
+            <div>
+                Supervisor:
+                <b>SUP001 / 1234</b>
+            </div>
+
+            <div>
+                OBS:
+                <b>OBS001 / 1234</b>
+            </div>
+
+            <div>
+                Finance:
+                <b>FIN001 / 1234</b>
+            </div>
+
+            <div>
+                Management:
+                <b>MGT001 / 1234</b>
+            </div>
+
+            <div>
+                Admin:
+                <b>ADMIN001 / 1234</b>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     APPLICATION
+     ========================================================= -->
+
+<div
+    v-else
+    class="application"
+>
+
+
+<!-- =========================================================
+     HEADER
+     ========================================================= -->
+
+<header class="top-header">
+
+    <div class="brand">
+
+        <img
+            src="logo.png"
+            alt="Himalaya Airlines"
+        >
+
+        <div class="brand-text">
+
+            <h2>
+                HIMALAYA AIRLINES
+            </h2>
+
+            <small>
+                OBS REVENUE MANAGEMENT SYSTEM
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="header-right">
+
+        <div
+            class="connection-status"
+            :class="online ? 'online' : 'offline'"
+        >
+
+            <span class="status-dot"></span>
+
+            {{
+                online
+                    ? "ONLINE"
+                    : "OFFLINE"
+            }}
+
+        </div>
+
+
+        <div class="user-info">
+
+            <div class="user-avatar">
+                {{ getInitials(user.name) }}
+            </div>
+
+            <div>
+
+                <strong>
+                    {{ user.name }}
+                </strong>
+
+                <small>
+                    {{ formatRole(user.role) }}
+                </small>
+
+            </div>
+
+        </div>
+
+
+        <button
+            class="logout-button"
+            @click="logout"
+        >
+            Logout
+        </button>
+
+    </div>
+
+</header>
+
+
+<!-- =========================================================
+     OFFLINE BANNER
+     ========================================================= -->
+
+<div
+    v-if="!online"
+    class="offline-banner"
+>
+
+    <div class="offline-icon">
+        !
+    </div>
+
+    <div>
+
+        <strong>
+            OFFLINE MODE
+        </strong>
+
+        <span>
+            Sales are stored locally and will automatically
+            synchronize when internet connectivity is restored.
+        </span>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     NAVIGATION
+     ========================================================= -->
+
+<nav class="main-navigation">
+
+
+    <button
+        v-if="canAccess('crew')"
+        @click="goTo('crew')"
+        :class="{ active: page === 'crew' }"
+    >
+
+        <span>✈</span>
+
+        Crew Sales
+
+    </button>
+
+
+    <button
+        v-if="canAccess('inventory')"
+        @click="goTo('inventory')"
+        :class="{ active: page === 'inventory' }"
+    >
+
+        <span>▣</span>
+
+        Inventory
+
+    </button>
+
+
+    <button
+        v-if="canAccess('dashboard')"
+        @click="goTo('dashboard')"
+        :class="{ active: page === 'dashboard' }"
+    >
+
+        <span>▥</span>
+
+        Management Dashboard
+
+    </button>
+
+
+    <button
+        v-if="canAccess('sync')"
+        @click="goTo('sync')"
+        :class="{ active: page === 'sync' }"
+    >
+
+        <span>↻</span>
+
+        Synchronization
+
+        <span
+            v-if="pendingSales.length"
+            class="nav-badge"
+        >
+            {{ pendingSales.length }}
+        </span>
+
+    </button>
+
+
+    <button
+        v-if="canAccess('admin')"
+        @click="goTo('admin')"
+        :class="{ active: page === 'admin' }"
+    >
+
+        <span>⚙</span>
+
+        User Management
+
+    </button>
+
+</nav>
+
+
+<!-- =========================================================
+     MAIN
+     ========================================================= -->
+
+<main class="main-content">
+
+
+<!-- =========================================================
+     CREW SALES
+     ========================================================= -->
+
+<section
+    v-if="page === 'crew'"
+    class="page-section"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <h1>
+                Crew OBS Sales
+            </h1>
+
+            <p>
+                Record onboard sales and manage flight transactions.
+            </p>
+
+        </div>
+
+        <div class="page-status">
+
+            <span
+                :class="online ? 'good' : 'bad'"
+            >
+
+                ●
+
+                {{
+                    online
+                        ? "Connected"
+                        : "Offline"
+                }}
+
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- FLIGHT -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Enter Flight Details
+                </h2>
+
+                <p>
+                    Create or select the active flight.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="form-grid">
+
+
+            <div class="form-group">
+
+                <label>
+                    Flight Number
+                </label>
+
+                <input
+                    v-model="flightForm.flight_number"
+                    placeholder="H9-123"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Flight Date
+                </label>
+
+                <input
+                    type="date"
+                    v-model="flightForm.flight_date"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Aircraft
+                </label>
+
+                <input
+                    v-model="flightForm.aircraft"
+                    placeholder="9N-ABC"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    PAX Load
+                </label>
+
+                <input
+                    type="number"
+                    min="1"
+                    v-model.number="flightForm.passengers"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    From
+                </label>
+
+                <input
+                    v-model="flightForm.origin"
+                    maxlength="3"
+                    placeholder="KTM"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    To
+                </label>
+
+                <input
+                    v-model="flightForm.destination"
+                    maxlength="3"
+                    placeholder="DXB"
+                >
+
+            </div>
+
+        </div>
+
+
+        <button
+            class="primary"
+            @click="createFlight"
+            :disabled="creatingFlight"
+        >
+
+            {{
+                creatingFlight
+                    ? "SAVING..."
+                    : "SAVE / START FLIGHT"
+            }}
+
+        </button>
+
+
+        <p
+            v-if="flightError"
+            class="error"
+        >
+            {{ flightError }}
+        </p>
+
+    </div>
+
+
+    <!-- SELECT FLIGHT -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Active Flight
+                </h2>
+
+                <p>
+                    Select the flight for your sale.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <select
+            v-model.number="selectedFlight"
+            class="large-select"
+        >
+
+            <option
+                v-for="flight in flights"
+                :key="flight.id"
+                :value="flight.id"
+            >
+
+                {{ flight.flight_number }}
+
+                —
+
+                {{ flight.origin }}
+
+                →
+
+                {{ flight.destination }}
+
+                —
+
+                {{ flight.passengers }} PAX
+
+                —
+
+                {{ flight.flight_date }}
+
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <!-- PRODUCTS -->
+
+    <div class="products-grid">
+
+        <div
+            v-for="product in products"
+            :key="product.id"
+            class="product-card"
+        >
+
+            <div class="product-category">
+                {{ product.category }}
+            </div>
+
+            <h3>
+                {{ product.product_name }}
+            </h3>
+
+            <div class="product-price">
+
+                USD
+                {{ Number(product.selling_price || 0).toFixed(2) }}
+
+            </div>
+
+
+            <div
+                class="stock-display"
+                :class="{
+                    'stock-empty':
+                        getAvailableQuantity(product.id) === 0,
+
+                    'stock-low':
+                        getAvailableQuantity(product.id) > 0 &&
+                        getAvailableQuantity(product.id) <= 5
+                }"
+            >
+
+                <span>
+                    Available
+                </span>
+
+                <strong>
+
+                    {{
+                        getAvailableQuantity(product.id) > 0
+                            ? getAvailableQuantity(product.id)
+                            : "SOLD OUT"
+                    }}
+
+                </strong>
+
+            </div>
+
+
+            <div class="quantity-control">
+
+                <button
+                    @click="decrease(product)"
+                    :disabled="!cart[product.id]"
+                >
+                    −
+                </button>
+
+                <strong>
+                    {{ cart[product.id] || 0 }}
+                </strong>
+
+                <button
+                    @click="increase(product)"
+                    :disabled="
+                        getAvailableQuantity(product.id)
+                        <=
+                        (cart[product.id] || 0)
+                    "
+                >
+                    +
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- SALE SUMMARY -->
+
+    <div class="sale-summary card">
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Sale Summary
+                </h2>
+
+                <p>
+                    Review the transaction before recording.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <template
+            v-for="product in products"
+            :key="'summary-' + product.id"
+        >
+
+            <div
+                v-if="product && cart[product.id]"
+                class="summary-item"
+            >
+
+                <span>
+
+                    {{ product.product_name }}
+
+                    ×
+
+                    {{ cart[product.id] }}
+
+                </span>
+
+                <strong>
+
+                    USD
+
+                    {{
+                        (
+                            cart[product.id] *
+                            Number(product.selling_price || 0)
+                        ).toFixed(2)
+                    }}
+
+                </strong>
+
+            </div>
+
+        </template>
+
+
+        <div
+            v-if="cartTotal === 0"
+            class="empty-summary"
+        >
+            No products selected.
+        </div>
+
+
+        <hr>
+
+
+        <div class="summary-row">
+
+            <span>
+                Total Revenue (USD)
+            </span>
+
+            <strong>
+                USD {{ formattedUsdTotal }}
+            </strong>
+
+        </div>
+
+
+        <div class="currency-section">
+
+            <label>
+                Payment Currency
+            </label>
+
+            <select
+                v-model="selectedCurrency"
+            >
+
+                <option
+                    v-for="currency in currencies"
+                    :key="currency.code"
+                    :value="currency.code"
+                >
+
+                    {{ currency.code }}
+                    —
+                    {{ currency.name }}
+
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div class="exchange-box">
+
+            <div>
+
+                <span>
+                    Exchange Rate
+                </span>
+
+                <strong>
+
+                    1 USD =
+                    {{ Number(exchangeRate).toFixed(4) }}
+                    {{ selectedCurrency }}
+
+                </strong>
+
+            </div>
+
+            <small v-if="exchangeLoading">
+                Updating exchange rate...
+            </small>
+
+            <small
+                v-if="exchangeError"
+                class="exchange-warning"
+            >
+                ⚠ {{ exchangeError }}
+            </small>
+
+        </div>
+
+
+        <div class="customer-payment">
+
+            <span>
+                Amount to Collect
+            </span>
+
+            <strong>
+
+                {{ currencySymbol }}
+                {{ formattedCustomerAmount }}
+                {{ selectedCurrency }}
+
+            </strong>
+
+        </div>
+
+
+        <div class="system-revenue">
+
+            <span>
+                System Revenue
+            </span>
+
+            <strong>
+                USD {{ formattedUsdTotal }}
+            </strong>
+
+        </div>
+
+
+        <hr>
+
+
+        <div class="final-total">
+
+            TOTAL
+
+            <strong>
+                USD {{ formattedUsdTotal }}
+            </strong>
+
+        </div>
+
+
+        <button
+            class="primary record-button"
+            @click="recordSale"
+            :disabled="
+                Number(cartTotal || 0) === 0 ||
+                !selectedFlight
+            "
+        >
+            RECORD SALE
+        </button>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     INVENTORY
+     ========================================================= -->
+
+<section
+    v-if="page === 'inventory'"
+    class="page-section"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <h1>
+                Flight Inventory
+            </h1>
+
+            <p>
+                Manage onboard product inventory and quantities.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- FLIGHT -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Select Flight
+                </h2>
+
+                <p>
+                    Select the flight whose inventory you want to manage.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <select
+            v-model.number="selectedFlight"
+            class="large-select"
+        >
+
+            <option
+                v-for="flight in flights"
+                :key="flight.id"
+                :value="flight.id"
+            >
+
+                {{ flight.flight_number }}
+                —
+                {{ flight.origin }}
+                →
+                {{ flight.destination }}
+                —
+                {{ flight.flight_date }}
+
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <!-- SUMMARY -->
+
+    <div class="inventory-summary">
+
+        <div class="inventory-summary-card">
+
+            <span>
+                Products
+            </span>
+
+            <strong>
+                {{ inventory.length }}
+            </strong>
+
+        </div>
+
+
+        <div class="inventory-summary-card">
+
+            <span>
+                Total Loaded
+            </span>
+
+            <strong>
+                {{ totalLoaded }}
+            </strong>
+
+        </div>
+
+
+        <div class="inventory-summary-card">
+
+            <span>
+                Total Sold
+            </span>
+
+            <strong>
+                {{ totalSold }}
+            </strong>
+
+        </div>
+
+
+        <div class="inventory-summary-card">
+
+            <span>
+                Remaining
+            </span>
+
+            <strong>
+                {{ totalRemaining }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- INVENTORY MANAGEMENT -->
+
+    <div
+        v-if="isInventoryManager"
+        class="card"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Add Inventory
+                </h2>
+
+                <p>
+                    Add a product to the selected flight.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="form-grid">
+
+
+            <div class="form-group">
+
+                <label>
+                    Product
+                </label>
+
+                <select
+                    v-model.number="inventoryForm.product_id"
+                >
+
+                    <option
+                        :value="null"
+                    >
+                        Select Product
+                    </option>
+
+                    <option
+                        v-for="product in products"
+                        :key="product.id"
+                        :value="product.id"
+                    >
+
+                        {{ product.product_name }}
+                        —
+                        {{ product.category }}
+
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Loaded Quantity
+                </label>
+
+                <input
+                    type="number"
+                    min="0"
+                    v-model.number="inventoryForm.loaded_quantity"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Returned Quantity
+                </label>
+
+                <input
+                    type="number"
+                    min="0"
+                    v-model.number="inventoryForm.returned_quantity"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Wasted Quantity
+                </label>
+
+                <input
+                    type="number"
+                    min="0"
+                    v-model.number="inventoryForm.wasted_quantity"
+                >
+
+            </div>
+
+        </div>
+
+
+        <button
+            class="primary"
+            @click="addInventory"
+            :disabled="inventorySaving"
+        >
+
+            {{
+                inventorySaving
+                    ? "ADDING..."
+                    : "ADD INVENTORY"
+            }}
+
+        </button>
+
+
+        <p
+            v-if="inventoryMessage"
+            :class="
+                inventoryMessageType === 'success'
+                    ? 'success-message'
+                    : 'error'
+            "
+        >
+            {{ inventoryMessage }}
+        </p>
+
+    </div>
+
+
+    <!-- PRODUCT MANAGEMENT -->
+
+    <div
+        v-if="isInventoryManager"
+        class="card"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Product Management
+                </h2>
+
+                <p>
+                    Add a new onboard product.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="form-grid">
+
+
+            <div class="form-group">
+
+                <label>
+                    Product Code
+                </label>
+
+                <input
+                    v-model="newProduct.product_code"
+                    placeholder="e.g. SNK001"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Product Name
+                </label>
+
+                <input
+                    v-model="newProduct.product_name"
+                    placeholder="Product name"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Category
+                </label>
+
+                <select
+                    v-model="newProduct.category"
+                >
+
+                    <option value="">
+                        Select Category
+                    </option>
+
+                    <option value="Food">
+                        Food
+                    </option>
+
+                    <option value="Beverage">
+                        Beverage
+                    </option>
+
+                    <option value="Merchandise">
+                        Merchandise
+                    </option>
+
+                    <option value="Duty Free">
+                        Duty Free
+                    </option>
+
+                    <option value="Other">
+                        Other
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Selling Price (USD)
+                </label>
+
+                <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    v-model.number="newProduct.selling_price"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Cost (USD)
+                </label>
+
+                <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    v-model.number="newProduct.cost"
+                >
+
+            </div>
+
+        </div>
+
+
+        <button
+            class="primary"
+            @click="createProduct"
+            :disabled="productSaving"
+        >
+
+            {{
+                productSaving
+                    ? "ADDING..."
+                    : "ADD PRODUCT"
+            }}
+
+        </button>
+
+
+        <p
+            v-if="productMessage"
+            :class="
+                productMessageType === 'success'
+                    ? 'success-message'
+                    : 'error'
+            "
+        >
+            {{ productMessage }}
+        </p>
+
+    </div>
+
+
+    <!-- INVENTORY TABLE -->
+
+    <div class="table-card">
+
+        <div class="table-header">
+
+            <div>
+
+                <h2>
+                    Inventory Details
+                </h2>
+
+                <p>
+                    Product stock status for the selected flight.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="table-responsive">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Product
+                        </th>
+
+                        <th>
+                            Category
+                        </th>
+
+                        <th>
+                            Loaded
+                        </th>
+
+                        <th>
+                            Sold
+                        </th>
+
+                        <th>
+                            Returned
+                        </th>
+
+                        <th>
+                            Wasted
+                        </th>
+
+                        <th>
+                            Remaining
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th v-if="isInventoryManager">
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    <tr
+                        v-for="item in inventory"
+                        :key="item.id"
+                    >
+
+                        <td>
+
+                            <strong>
+                                {{ item.product_name }}
+                            </strong>
+
+                            <small>
+                                {{ item.product_code }}
+                            </small>
+
+                        </td>
+
+
+                        <td>
+                            {{ item.category }}
+                        </td>
+
+
+                        <td>
+
+                            <input
+                                v-if="isInventoryManager && editingInventoryId === item.id"
+                                type="number"
+                                min="0"
+                                v-model.number="editingInventory.loaded_quantity"
+                                style="width:80px"
+                            >
+
+                            <span v-else>
+                                {{ item.loaded_quantity }}
+                            </span>
+
+                        </td>
+
+
+                        <td>
+                            {{ item.sold_quantity }}
+                        </td>
+
+
+                        <td>
+
+                            <input
+                                v-if="isInventoryManager && editingInventoryId === item.id"
+                                type="number"
+                                min="0"
+                                v-model.number="editingInventory.returned_quantity"
+                                style="width:80px"
+                            >
+
+                            <span v-else>
+                                {{ item.returned_quantity }}
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <input
+                                v-if="isInventoryManager && editingInventoryId === item.id"
+                                type="number"
+                                min="0"
+                                v-model.number="editingInventory.wasted_quantity"
+                                style="width:80px"
+                            >
+
+                            <span v-else>
+                                {{ item.wasted_quantity }}
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <span
+                                class="stock-number"
+                                :class="{
+                                    good:
+                                        Number(item.remaining_quantity) > 5,
+
+                                    warning:
+                                        Number(item.remaining_quantity) > 0 &&
+                                        Number(item.remaining_quantity) <= 5,
+
+                                    bad:
+                                        Number(item.remaining_quantity) <= 0
+                                }"
+                            >
+
+                                {{ item.remaining_quantity }}
+
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <span
+                                v-if="Number(item.remaining_quantity) <= 0"
+                                class="status-pill danger"
+                            >
+                                SOLD OUT
+                            </span>
+
+                            <span
+                                v-else-if="Number(item.remaining_quantity) <= 5"
+                                class="status-pill warning"
+                            >
+                                LOW STOCK
+                            </span>
+
+                            <span
+                                v-else
+                                class="status-pill success"
+                            >
+                                AVAILABLE
+                            </span>
+
+                        </td>
+
+
+                        <td v-if="isInventoryManager">
+
+                            <div
+                                v-if="editingInventoryId === item.id"
+                                style="display:flex;gap:6px;"
+                            >
+
+                                <button
+                                    class="primary"
+                                    @click="saveInventory(item)"
+                                >
+                                    Save
+                                </button>
+
+                                <button
+                                    class="secondary-button"
+                                    @click="cancelInventoryEdit"
+                                >
+                                    Cancel
+                                </button>
+
+                            </div>
+
+
+                            <div v-else style="display:flex;gap:6px;">
+
+                                <button
+                                    class="secondary-button"
+                                    @click="startInventoryEdit(item)"
+                                >
+                                    Edit
+                                </button>
+
+                                <button
+                                    class="logout-button"
+                                    @click="deleteInventory(item)"
+                                >
+                                    Delete
+                                </button>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+
+                    <tr
+                        v-if="inventory.length === 0"
+                    >
+
+                        <td
+                            colspan="9"
+                            class="empty-table"
+                        >
+                            No inventory data available.
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     DASHBOARD
+     ========================================================= -->
+
+<section
+    v-if="page === 'dashboard'"
+    class="page-section"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <h1>
+                Management Dashboard
+            </h1>
+
+            <p>
+                Monitor OBS revenue performance and flight sales.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="report-date-card">
+
+        <div>
+
+            <h2>
+                Report Date
+            </h2>
+
+            <p>
+                Select the period you want to analyze.
+            </p>
+
+        </div>
+
+
+        <div class="date-filter-grid">
+
+
+            <div>
+
+                <label>
+                    Year
+                </label>
+
+                <select
+                    v-model.number="dashboardFilter.year"
+                    @change="loadDashboard"
+                >
+
+                    <option
+                        v-for="year in yearOptions"
+                        :key="year"
+                        :value="year"
+                    >
+                        {{ year }}
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div>
+
+                <label>
+                    Month
+                </label>
+
+                <select
+                    v-model.number="dashboardFilter.month"
+                    @change="loadDashboard"
+                >
+
+                    <option :value="null">
+                        All Months
+                    </option>
+
+                    <option
+                        v-for="month in monthOptions"
+                        :key="month.value"
+                        :value="month.value"
+                    >
+                        {{ month.label }}
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div>
+
+                <label>
+                    Day
+                </label>
+
+                <select
+                    v-model.number="dashboardFilter.day"
+                    @change="loadDashboard"
+                >
+
+                    <option :value="null">
+                        All Days
+                    </option>
+
+                    <option
+                        v-for="day in dayOptions"
+                        :key="day"
+                        :value="day"
+                    >
+                        {{ day }}
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <button
+                class="reset-button"
+                @click="resetDashboardFilter"
+            >
+                ↻ Reset
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div class="metrics-grid">
+
+
+        <div class="metric-card">
+
+            <span>
+                Current RPP
+            </span>
+
+            <strong>
+                USD
+                {{ Number(dashboard.rpp || 0).toFixed(2) }}
+            </strong>
+
+        </div>
+
+
+        <div class="metric-card">
+
+            <span>
+                Target RPP
+            </span>
+
+            <strong>
+                USD
+                {{ Number(dashboard.target_rpp || 0).toFixed(2) }}
+            </strong>
+
+        </div>
+
+
+        <div class="metric-card">
+
+            <span>
+                RPP Gap
+            </span>
+
+            <strong
+                :class="
+                    Number(dashboard.gap || 0) >= 0
+                        ? 'good'
+                        : 'bad'
+                "
+            >
+                USD
+                {{ Number(dashboard.gap || 0).toFixed(2) }}
+            </strong>
+
+        </div>
+
+
+        <div class="metric-card">
+
+            <span>
+                Achievement
+            </span>
+
+            <strong>
+                {{ Number(dashboard.achievement || 0).toFixed(1) }}%
+            </strong>
+
+        </div>
+
+
+        <div class="metric-card">
+
+            <span>
+                Total Revenue
+            </span>
+
+            <strong>
+                USD
+                {{ Number(dashboard.revenue || 0).toFixed(2) }}
+            </strong>
+
+        </div>
+
+
+        <div class="metric-card">
+
+            <span>
+                Passengers
+            </span>
+
+            <strong>
+                {{ dashboard.passengers || 0 }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="section-header">
+
+        <div>
+
+            <h2>
+                Flight Performance
+            </h2>
+
+            <p>
+                Performance for the selected reporting period.
+            </p>
+
+        </div>
+
+
+        <button
+            class="secondary-button"
+            @click="toggleChart"
+        >
+
+            {{
+                chartVisible
+                    ? "SHOW TABLE"
+                    : "VIEW CHART"
+            }}
+
+        </button>
+
+    </div>
+
+
+    <div
+        v-if="!chartVisible"
+        class="table-card"
+    >
+
+        <div class="table-responsive">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Flight
+                        </th>
+
+                        <th>
+                            Route
+                        </th>
+
+                        <th>
+                            Date
+                        </th>
+
+                        <th>
+                            Passengers
+                        </th>
+
+                        <th>
+                            Revenue
+                        </th>
+
+                        <th>
+                            RPP
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    <tr
+                        v-for="flight in dashboard.flights"
+                        :key="flight.id"
+                    >
+
+                        <td>
+                            <strong>
+                                {{ flight.flight_number }}
+                            </strong>
+                        </td>
+
+                        <td>
+                            {{ flight.origin }}
+                            →
+                            {{ flight.destination }}
+                        </td>
+
+                        <td>
+                            {{ flight.flight_date }}
+                        </td>
+
+                        <td>
+                            {{ flight.passengers }}
+                        </td>
+
+                        <td>
+                            USD
+                            {{ Number(flight.revenue || 0).toFixed(2) }}
+                        </td>
+
+                        <td
+                            :class="
+                                Number(flight.rpp || 0) >= 2
+                                    ? 'good'
+                                    : 'bad'
+                            "
+                        >
+                            USD
+                            {{ Number(flight.rpp || 0).toFixed(2) }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr
+                        v-if="
+                            !dashboard.flights ||
+                            dashboard.flights.length === 0
+                        "
+                    >
+
+                        <td
+                            colspan="6"
+                            class="empty-table"
+                        >
+                            No flight performance data.
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <div
+        v-if="chartVisible"
+        class="chart-card"
+    >
+
+        <div class="chart-controls">
+
+            <button
+                :class="{
+                    'active-chart':
+                        chartType === 'line'
+                }"
+                @click="chartType='line'"
+            >
+                LINE — RPP
+            </button>
+
+            <button
+                :class="{
+                    'active-chart':
+                        chartType === 'bar'
+                }"
+                @click="chartType='bar'"
+            >
+                BAR — REVENUE
+            </button>
+
+        </div>
+
+
+        <div class="chart-container">
+
+            <canvas
+                id="flightPerformanceChart"
+            ></canvas>
+
+        </div>
+
+    </div>
+
+
+    <div class="section-header">
+
+        <div>
+
+            <h2>
+                Product Performance
+            </h2>
+
+            <p>
+                Sales performance by product.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-card">
+
+        <div class="table-responsive">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Product
+                        </th>
+
+                        <th>
+                            Quantity Sold
+                        </th>
+
+                        <th>
+                            Revenue
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    <tr
+                        v-for="product in dashboard.products"
+                        :key="product.product_name"
+                    >
+
+                        <td>
+                            {{ product.product_name }}
+                        </td>
+
+                        <td>
+                            {{ product.quantity_sold || 0 }}
+                        </td>
+
+                        <td>
+                            USD
+                            {{ Number(product.revenue || 0).toFixed(2) }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr
+                        v-if="
+                            !dashboard.products ||
+                            dashboard.products.length === 0
+                        "
+                    >
+
+                        <td
+                            colspan="3"
+                            class="empty-table"
+                        >
+                            No product performance data.
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     SYNCHRONIZATION
+     ========================================================= -->
+
+<section
+    v-if="page === 'sync'"
+    class="page-section"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <h1>
+                Synchronization
+            </h1>
+
+            <p>
+                Transactions synchronize automatically when connectivity is restored.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="sync-top-grid">
+
+
+        <div class="sync-card">
+
+            <div class="sync-card-icon connection-icon">
+                ●
+            </div>
+
+            <div>
+
+                <span class="sync-label">
+                    Device Status
+                </span>
+
+                <h2
+                    :class="online ? 'good' : 'bad'"
+                >
+
+                    {{
+                        online
+                            ? "Connected"
+                            : "Offline"
+                    }}
+
+                </h2>
+
+                <p>
+
+                    {{
+                        online
+                            ? "Backend connection is active."
+                            : "Waiting for internet connection."
+                    }}
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="sync-card">
+
+            <div class="sync-card-icon pending-icon">
+                ↻
+            </div>
+
+            <div>
+
+                <span class="sync-label">
+                    Pending Transactions
+                </span>
+
+                <h2>
+                    {{ pendingSales.length }}
+                </h2>
+
+                <p>
+
+                    {{
+                        pendingSales.length === 0
+                            ? "Everything is synchronized."
+                            : "Waiting to synchronize."
+                    }}
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="sync-status-panel">
+
+        <div
+            class="sync-status-icon"
+            :class="
+                online
+                    ? 'success-sync'
+                    : 'waiting-sync'
+            "
+        >
+
+            {{
+                online
+                    ? "✓"
+                    : "!"
+            }}
+
+        </div>
+
+
+        <div>
+
+            <h3>
+                Synchronization Status
+            </h3>
+
+            <p>
+
+                {{
+                    syncMessage ||
+                    (
+                        online
+                            ? "All transactions are synchronized."
+                            : "Transactions will synchronize automatically when the connection is restored."
+                    )
+                }}
+
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="last-sync-row">
+
+        <span>
+            Last synchronization
+        </span>
+
+        <strong>
+            {{ lastSyncTime || "No synchronization yet" }}
+        </strong>
+
+    </div>
+
+
+    <div class="table-card">
+
+        <div class="table-responsive">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Transaction ID
+                        </th>
+
+                        <th>
+                            Flight
+                        </th>
+
+                        <th>
+                            Product
+                        </th>
+
+                        <th>
+                            Quantity
+                        </th>
+
+                        <th>
+                            Amount
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    <tr
+                        v-for="sale in pendingSales"
+                        :key="sale.transaction_id"
+                    >
+
+                        <td>
+                            {{ sale.transaction_id }}
+                        </td>
+
+                        <td>
+                            {{ sale.flight_id }}
+                        </td>
+
+                        <td>
+                            Product #{{ sale.product_id }}
+                        </td>
+
+                        <td>
+                            {{ sale.quantity }}
+                        </td>
+
+                        <td>
+                            USD
+                            {{ Number(sale.total_amount || 0).toFixed(2) }}
+                        </td>
+
+                        <td>
+
+                            <span class="status-pill pending">
+                                PENDING
+                            </span>
+
+                        </td>
+
+                    </tr>
+
+
+                    <tr
+                        v-if="pendingSales.length === 0"
+                    >
+
+                        <td
+                            colspan="6"
+                            class="empty-table"
+                        >
+
+                            <div class="empty-state">
+
+                                <div class="empty-state-icon">
+                                    ✓
+                                </div>
+
+                                <strong>
+                                    No pending transactions
+                                </strong>
+
+                                <span>
+                                    All local transactions are synchronized.
+                                </span>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     ADMIN
+     ========================================================= -->
+
+<section
+    v-if="page === 'admin'"
+    class="page-section"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <h1>
+                User Management
+            </h1>
+
+            <p>
+                Create, edit, change roles and delete system users.
+            </p>
+
+        </div>
+
+        <div class="admin-badge">
+            ADMINISTRATOR
+        </div>
+
+    </div>
+
+
+    <!-- CREATE USER -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Create New User
+                </h2>
+
+                <p>
+                    Add an employee and assign their access level.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="form-grid">
+
+
+            <div class="form-group">
+
+                <label>
+                    Employee ID
+                </label>
+
+                <input
+                    v-model="newUser.employee_id"
+                    placeholder="e.g. CREW002"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Full Name
+                </label>
+
+                <input
+                    v-model="newUser.name"
+                    placeholder="Employee name"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Password
+                </label>
+
+                <input
+                    v-model="newUser.password"
+                    type="password"
+                    placeholder="Temporary password"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Role
+                </label>
+
+                <select
+                    v-model="newUser.role"
+                >
+
+                    <option value="crew">
+                        Crew
+                    </option>
+
+                    <option value="inventory">
+                        Inventory
+                    </option>
+
+                    <option value="management">
+                        Management
+                    </option>
+
+                    <option value="admin">
+                        Administrator
+                    </option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+
+        <button
+            class="primary"
+            @click="createUser"
+            :disabled="creatingUser"
+        >
+
+            {{
+                creatingUser
+                    ? "CREATING USER..."
+                    : "CREATE USER"
+            }}
+
+        </button>
+
+
+        <p
+            v-if="userMessage"
+            :class="
+                userMessageType === 'success'
+                    ? 'success-message'
+                    : 'error'
+            "
+        >
+            {{ userMessage }}
+        </p>
+
+    </div>
+
+
+    <!-- USERS -->
+
+    <div class="table-card">
+
+        <div class="table-header">
+
+            <div>
+
+                <h2>
+                    System Users
+                </h2>
+
+                <p>
+                    Manage employee accounts and access roles.
+                </p>
+
+            </div>
+
+
+            <button
+                class="secondary-button"
+                @click="loadUsers"
+            >
+                ↻ Refresh
+            </button>
+
+        </div>
+
+
+        <div class="table-responsive">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Employee ID
+                        </th>
+
+                        <th>
+                            Name
+                        </th>
+
+                        <th>
+                            Role
+                        </th>
+
+                        <th>
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    <tr
+                        v-for="account in users"
+                        :key="account.id"
+                    >
+
+
+                        <td>
+
+                            <strong>
+                                {{ account.employee_id }}
+                            </strong>
+
+                        </td>
+
+
+                        <td>
+
+                            <input
+                                v-if="editingUserId === account.id"
+                                v-model="editingUser.name"
+                                style="width:160px"
+                            >
+
+                            <span v-else>
+                                {{ account.name }}
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <select
+                                v-if="editingUserId === account.id"
+                                v-model="editingUser.role"
+                            >
+
+                                <option value="crew">
+                                    Crew
+                                </option>
+
+                                <option value="inventory">
+                                    Inventory
+                                </option>
+
+                                <option value="management">
+                                    Management
+                                </option>
+
+                                <option value="admin">
+                                    Administrator
+                                </option>
+
+                            </select>
+
+
+                            <span v-else>
+
+                                <span class="status-pill success">
+                                    {{ formatRole(account.role) }}
+                                </span>
+
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <div
+                                v-if="editingUserId === account.id"
+                                style="display:flex;gap:6px;flex-wrap:wrap;"
+                            >
+
+                                <button
+                                    class="primary"
+                                    @click="saveUser(account)"
+                                >
+                                    Save
+                                </button>
+
+                                <button
+                                    class="secondary-button"
+                                    @click="cancelUserEdit"
+                                >
+                                    Cancel
+                                </button>
+
+                            </div>
+
+
+                            <div
+                                v-else
+                                style="display:flex;gap:6px;flex-wrap:wrap;"
+                            >
+
+                                <button
+                                    class="secondary-button"
+                                    @click="startUserEdit(account)"
+                                >
+                                    Edit
+                                </button>
+
+                                <button
+                                    class="secondary-button"
+                                    @click="changePassword(account)"
+                                >
+                                    Password
+                                </button>
+
+                                <button
+                                    class="logout-button"
+                                    @click="deleteUser(account)"
+                                    :disabled="
+                                        account.employee_id === user.employee_id
+                                    "
+                                >
+                                    Delete
+                                </button>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+
+                    <tr
+                        v-if="users.length === 0"
+                    >
+
+                        <td
+                            colspan="4"
+                            class="empty-table"
+                        >
+                            No users found.
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- ROLE PERMISSIONS -->
+
+    <div class="section-header">
+
+        <div>
+
+            <h2>
+                Role Permissions
+            </h2>
+
+            <p>
+                Access levels available in the system.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="role-grid">
+
+
+        <div class="role-card">
+
+            <div class="role-card-icon">
+                ✈
+            </div>
+
+            <h3>
+                Crew
+            </h3>
+
+            <p>
+                Can record onboard sales and view synchronization.
+            </p>
+
+            <div class="role-access">
+                Crew Sales · Synchronization
+            </div>
+
+        </div>
+
+
+        <div class="role-card">
+
+            <div class="role-card-icon">
+                ▣
+            </div>
+
+            <h3>
+                Inventory
+            </h3>
+
+            <p>
+                Can add, edit and delete flight inventory.
+            </p>
+
+            <div class="role-access">
+                Inventory · Products · Synchronization
+            </div>
+
+        </div>
+
+
+        <div class="role-card">
+
+            <div class="role-card-icon">
+                ▥
+            </div>
+
+            <h3>
+                Management
+            </h3>
+
+            <p>
+                Can access sales, inventory and management dashboard.
+            </p>
+
+            <div class="role-access">
+                Sales · Inventory · Dashboard
+            </div>
+
+        </div>
+
+
+        <div class="role-card">
+
+            <div class="role-card-icon">
+                ⚙
+            </div>
+
+            <h3>
+                Administrator
+            </h3>
+
+            <p>
+                Full user account and system administration.
+            </p>
+
+            <div class="role-access">
+                User Management
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+</main>
+
+</div>
+
+</div>
+
+
+<!-- =========================================================
+     VUE
+     ========================================================= -->
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+
+<!-- =========================================================
+     CHART.JS
+     ========================================================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<!-- =========================================================
+     APPLICATION
+     ========================================================= -->
+
+<script src="app.js"></script>
+
+
+</body>
+
+</html>
